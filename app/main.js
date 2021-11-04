@@ -11,7 +11,7 @@ app.on("ready", () => {
 });
 
 exports.openFileDialog = () => {
-  const files = dialog.showOpenDialog({
+  const files = dialog.showOpenDialog(mainWindow, {
     properties: ["openFile"],
     filters: [
       { name: "TextFile", extensions: ["txt"] },
@@ -23,8 +23,41 @@ exports.openFileDialog = () => {
   if (!files) return;
   openFileContent(files[0]);
 };
-const openFileContent = async (file) => {
+exports.saveMarkDown = async (file, content) => {
+  if (!file) {
+    file = dialog.showSaveDialog(mainWindow, {
+      title: "Save Markdown",
+      defaultPath: app.getPath("documents"),
+      filters: [
+        {
+          name: "MarkDown File",
+          extensions: ["md"],
+        },
+      ],
+    });
+  }
+  if (!file) return;
+  await fs.writeFile(file, content);
+  app.addRecentDocument(file);
+  openFileContent(file);
+};
+exports.saveHtml = async (content) => {
+  const file = dialog.showSaveDialog(mainWindow, {
+    title: "Save HTML",
+    defaultPath: app.getPath("documents"),
+    filters: [
+      {
+        name: "HTML File",
+        extensions: ["html"],
+      },
+    ],
+  });
+  if (!file) return;
+  await fs.writeFile(file, content);
+};
+const openFileContent = (exports.openFileContent = async (file) => {
   const content = await fs.readFile(file);
   const contentString = content.toString();
+  app.addRecentDocument(file);
   mainWindow.webContents.send("file-opened", file, contentString);
-};
+});
