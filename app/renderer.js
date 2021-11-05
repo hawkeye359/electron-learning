@@ -3,7 +3,7 @@ const path = require("path");
 let filePath = null;
 let originalContent = "";
 let isEdited = false;
-const { remote, ipcRenderer } = require("electron");
+const { remote, ipcRenderer, shell } = require("electron");
 const { openFileDialog, saveMarkDown, saveHtml, openFileContent } =
   remote.require("./main.js");
 const currentWindow = remote.getCurrentWindow();
@@ -19,6 +19,13 @@ const openInDefaultButton = document.querySelector("#open-in-default");
 
 const renderMarkdownToHtml = (markdown) => {
   htmlView.innerHTML = marked(markdown, { sanitize: true });
+  document.querySelectorAll("a").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      console.log("link clicked");
+      e.preventDefault();
+      shell.openExternal(e.target.href);
+    });
+  });
 };
 
 markdownView.addEventListener("keyup", (event) => {
@@ -36,12 +43,34 @@ saveMarkdownButton.addEventListener("click", () => {
 saveHtmlButton.addEventListener("click", () => {
   saveHtml(htmlView.innerHTML);
 });
+showFileButton.addEventListener("click", () => {
+  if (!filePath) {
+    alert("nope");
+    return;
+  } else {
+    shell.showItemInFolder(filePath);
+  }
+});
+openInDefaultButton.addEventListener("click", () => {
+  if (!filePath) {
+    alert("nope");
+    return;
+  } else {
+    shell.openItem(filePath);
+  }
+});
 ipcRenderer.on("file-opened", (e, file, content) => {
   filePath = file;
   originalContent = content;
   markdownView.value = content;
   renderMarkdownToHtml(content);
   upDateUI();
+});
+ipcRenderer.on("save-markdown", () => {
+  saveMarkDown(filePath, markdownView.value);
+});
+ipcRenderer.on("save-html", () => {
+  saveHtml(htmlView.innerHTML);
 });
 const upDateUI = (edited) => {
   let title = "Fire Sale";
@@ -52,6 +81,8 @@ const upDateUI = (edited) => {
     title = "• " + title;
   }
   saveMarkdownButton.disabled = !edited;
+  showFileButton.disabled = !filePath;
+  openInDefaultButton.disabled = !filePath;
   currentWindow.setTitle(title);
 };
 // window.addEventListener("beforeunload", function (e) {
